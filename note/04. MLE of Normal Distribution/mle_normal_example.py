@@ -1,5 +1,5 @@
 """
-Grid Search MLE 를 통한 정규분포 모수 추정
+Likelihood Grid Search 를 통한 정규분포 모수 추정 (MLE)
 """
 import numpy as np
 import pandas as pd
@@ -12,22 +12,22 @@ def normal_pdf(x: float, mu: float, sigma: float) -> float:
     return 1 / np.sqrt(2 * np.pi * sigma ** 2) * np.exp(-(1 / 2) * ((x - mu) / sigma) ** 2)
 
 
-def get_mle_by_product(x_array: np.ndarray, mu: float, sigma: float) -> float:
+def get_likelihood_by_product(x_array: np.ndarray, mu: float, sigma: float) -> float:
     probability_list = []
     for x in x_array:
         probability = normal_pdf(x, mu, sigma)
         probability_list.append(probability)
-    mle = np.product(probability_list)
-    return mle
+    likelihood = np.product(probability_list)
+    return likelihood
 
 
-def get_mle_by_log_sum(x_array: np.ndarray, mu: float, sigma: float) -> float:
+def get_likelihood_by_log_sum(x_array: np.ndarray, mu: float, sigma: float) -> float:
     log_probability_list = []
     for x in x_array:
         probability = normal_pdf(x, mu, sigma)
         log_probability_list.append(np.log(probability))
-    mle = np.sum(log_probability_list)
-    return mle
+    likelihood = np.sum(log_probability_list)
+    return likelihood
 
 
 if __name__ == "__main__":
@@ -42,19 +42,20 @@ if __name__ == "__main__":
     mu_list = np.unique(np.linspace(min_mu, max_mu, 10).round(2))
     sigma_list = np.unique(np.linspace(min_sigma, max_sigma, 10).round(1))
 
-    mle_df = pd.DataFrame(columns=['mu', 'sigma', 'mle'])
+    likelihood_df = pd.DataFrame(columns=['mu', 'sigma', 'likelihood'])
     for mu in mu_list:
         for sigma in sigma_list:
-            mle = get_mle_by_log_sum(normal_dist_samples, mu, sigma)
-            mle_df.loc[len(mle_df)] = [mu, sigma, mle]
+            likelihood = get_likelihood_by_log_sum(normal_dist_samples, mu, sigma)
+            likelihood_df.loc[len(likelihood_df)] = [mu, sigma, likelihood]
 
-    mle_df = mle_df.replace([-np.inf, np.inf], np.nan)
+    likelihood_df = likelihood_df.replace([-np.inf, np.inf], np.nan)
 
-    print(mle_df.loc[mle_df['mle'].argmax()])
+    mle = likelihood_df.loc[likelihood_df['likelihood'].argmax()]
+    print(mle)
 
-    mle_df['normalized_mle'] = (mle_df['mle'] - mle_df['mle'].mean()) / mle_df['mle'].std()
+    likelihood_df['normalized_likelihood'] = (likelihood_df['likelihood'] - likelihood_df['likelihood'].mean()) / likelihood_df['likelihood'].std()
 
-    heatmap_df = mle_df.pivot('mu', 'sigma', 'normalized_mle')
+    heatmap_df = likelihood_df.pivot('mu', 'sigma', 'normalized_likelihood')
 
     f, ax = plt.subplots(figsize=(9, 6))
     sns.heatmap(heatmap_df, annot=True, linewidths=.5, ax=ax)
@@ -62,7 +63,7 @@ if __name__ == "__main__":
 
     fig = plt.figure()
     ax = fig.gca(projection='3d')
-    ax.plot_trisurf(mle_df['mu'], mle_df['sigma'], mle_df['normalized_mle'], linewidth=0.2)
+    ax.plot_trisurf(likelihood_df['mu'], likelihood_df['sigma'], likelihood_df['normalized_likelihood'], linewidth=0.2)
     plt.show()
 
     fig = go.Figure(data=[go.Surface(z=heatmap_df.values)])
